@@ -6,6 +6,11 @@
 #include <sstream>
 #include <map>
 #include <stdexcept>
+#include <vector>
+#include <cstdarg>
+#include <windows.h>
+#include <conio.h>
+#include <ostream>
 
 using namespace std;
 
@@ -112,25 +117,43 @@ void playSound(const char* filename) {
 
 // Función para detectar teclas especiales
 bool isSpecialKeyPressed(const string& key) {
-    // Esta función debería ser implementada según la plataforma
-    return false; // Placeholder
+    if (_kbhit()) { // Verifica si hay una tecla presionada
+        char ch = _getch(); // Obtiene la tecla presionada
+        // Comprobar teclas específicas
+        if (key == "space" && ch == ' ') return true; // Tecla espacio
+        if (key == "enter" && ch == 13) return true; // Tecla enter
+        if (key == "esc" && ch == 27) return true; // Tecla escape
+        if (key == "a" && ch == 'a') return true; // Tecla A
+        if (key == "b" && ch == 'b') return true; // Tecla B
+        if (key == "c" && ch == 'c') return true; // Tecla C
+        if (key == "up" && ch == 72) return true; // Tecla flecha arriba
+        if (key == "down" && ch == 80) return true; // Tecla flecha abajo
+        if (key == "left" && ch == 75) return true; // Tecla flecha izquierda
+        if (key == "right" && ch == 77) return true; // Tecla flecha derecha
+    }
+    return false; // No se detectó la tecla
 }
 
-// Sobrecarga de la función needs para teclas específicas
+// Función needs que espera a que se presione una tecla específica
 void needs(const string& specificKey) {
-    if (isSpecialKeyPressed(specificKey)) {
-        cout << "Tecla " << specificKey << " presionada." << endl;
-        // Opción para pausar aquí
-        system("pause");
+    
+    while (true) {
+        if (isSpecialKeyPressed(specificKey)) {
+            cout << "Tecla " << specificKey << " presionada." << endl;
+            break; // Sale del bucle al detectar la tecla
+        }
     }
 }
 
 // Sobrecarga para múltiples teclas
 void needs(const char keys[], const string& specificKey) {
-    for (int i = 0; keys[i] != '\0'; ++i) {
-        if (isSpecialKeyPressed(string(1, keys[i]))) {
-            cout << "Tecla " << keys[i] << " presionada para " << specificKey << "." << endl;
-            break;
+    cout << "Esperando que se presione una de las teclas: " << specificKey << "..." << endl;
+    while (true) {
+        for (int i = 0; keys[i] != '\0'; ++i) {
+            if (isSpecialKeyPressed(string(1, keys[i]))) {
+                cout << "Tecla " << keys[i] << " presionada para " << specificKey << "." << endl;
+                return; // Sale de la función al detectar una tecla
+            }
         }
     }
 }
@@ -166,6 +189,158 @@ double processExpression(istringstream& stream) {
 double eval(const string& expression) {
     istringstream stream(expression);
     return processExpression(stream);
+}
+
+// Función para centrar el texto y devolverlo como string
+string c(const string& text) {
+    // Obtener el ancho de la consola
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+    int consoleWidth = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+
+    // Asegurarse de que el texto no sea más ancho que la consola
+    if (text.length() >= static_cast<size_t>(consoleWidth)) {
+        return text; // Devolver el texto original si es más largo
+    }
+
+    // Calcular el espacio necesario para centrar
+    int padding = (consoleWidth - static_cast<int>(text.length())) / 2;
+
+    // Crear la cadena centrada
+    string centeredText = string(max(padding, 0), ' ') + text; // Evitar negativos
+    return centeredText; // Devolver la cadena centrada
+}
+
+// Sobrecarga para manejar una variable
+string c(const string& text, const Variable& var) {
+    return c(text + " " + var.toString());
+}
+
+// Sobrecarga para manejar múltiples variables
+string c(const string& text, const vector<Variable*>& vars) {
+    string fullText = text;
+    for (size_t i = 0; i < vars.size(); ++i) {
+        fullText += " " + vars[i]->toString();
+    }
+    return c(fullText);
+}
+
+// Colores de fondo y texto
+enum Color {
+    BLACK = 0,
+    BLUE = 1,
+    GREEN = 2,
+    CYAN = 3,
+    RED = 4,
+    MAGENTA = 5,
+    BROWN = 6,
+    LIGHT_GRAY = 7,
+    DARK_GRAY = 8,
+    LIGHT_BLUE = 9,
+    LIGHT_GREEN = 10,
+    LIGHT_CYAN = 11,
+    LIGHT_RED = 12,
+    LIGHT_MAGENTA = 13,
+    LIGHT_BROWN = 14,
+    WHITE = 15,
+};
+
+// Función para cambiar el tamaño, el color de fondo y el color de texto de la ventana
+void Window(const std::string& size, const std::string& backgroundColor = "black", const std::string& textColor = "white") {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    
+    // Configurar el color de fondo
+    int bgColor;
+    if (backgroundColor == "black") bgColor = 0;
+    else if (backgroundColor == "blue") bgColor = 1;
+    else if (backgroundColor == "green") bgColor = 2;
+    else if (backgroundColor == "red") bgColor = 4;
+    else if (backgroundColor == "purple") bgColor = 5;
+    else if (backgroundColor == "yellow") bgColor = 6;
+    else if (backgroundColor == "lightGray") bgColor = 7;
+    else bgColor = 0; // default to black
+
+    // Configurar el color de texto
+    int txtColor;
+    if (textColor == "white") txtColor = 15;
+    else if (textColor == "black") txtColor = 0;
+    else if (textColor == "green") txtColor = 10;
+    else if (textColor == "red") txtColor = 12;
+    else if (textColor == "yellow") txtColor = 14;
+    else txtColor = 15; // default to white
+
+    // Cambiar el color
+    SetConsoleTextAttribute(hConsole, bgColor << 4 | txtColor);
+
+    // Cambiar el tamaño de la ventana
+    if (size == "full") {
+        HWND hwnd = GetConsoleWindow();
+        ShowWindow(hwnd, SW_MAXIMIZE);
+    } else {
+        // Aquí puedes implementar cambios de tamaño específicos si lo deseas
+        // Por ejemplo, establecer un tamaño específico
+        COORD bufferSize = { 80, 25 }; // Ajusta según tus necesidades
+        SMALL_RECT windowSize = { 0, 0, 79, 24 }; // Ajusta el tamaño de la ventana
+        SetConsoleScreenBufferSize(hConsole, bufferSize);
+        SetConsoleWindowInfo(hConsole, TRUE, &windowSize);
+    }
+}
+
+// Función para mostrar mensajes de alerta
+bool msg(const string& text, const string& type, const string& size = "medium", const string& sound = "", const string& title = "") {
+    UINT typeFlag;
+
+    // Determina el tipo de mensaje y el icono correspondiente
+    if (type == "alert") {
+        typeFlag = MB_ICONWARNING | MB_OK;
+        string defaultTitle = "Alerta";
+        MessageBoxA(NULL, text.c_str(), title.empty() ? defaultTitle.c_str() : title.c_str(), typeFlag);
+    } else if (type == "error") {
+        typeFlag = MB_ICONERROR | MB_OK;
+        string defaultTitle = "Error";
+        MessageBoxA(NULL, text.c_str(), title.empty() ? defaultTitle.c_str() : title.c_str(), typeFlag);
+    } else if (type == "info") {
+        typeFlag = MB_ICONINFORMATION | MB_OK;
+        string defaultTitle = "Información";
+        MessageBoxA(NULL, text.c_str(), title.empty() ? defaultTitle.c_str() : title.c_str(), typeFlag);
+    } else if (type == "yesno") {
+        string defaultTitle = "Confirmación";
+        int result = MessageBoxA(NULL, text.c_str(), title.empty() ? defaultTitle.c_str() : title.c_str(), MB_YESNO | MB_ICONQUESTION);
+        return result == IDYES; // Retorna true si es "Sí"
+    } else {
+        typeFlag = MB_OK; // Tipo por defecto
+        string defaultTitle = "Mensaje";
+        MessageBoxA(NULL, text.c_str(), title.empty() ? defaultTitle.c_str() : title.c_str(), typeFlag);
+    }
+
+    // Reproducir sonido si se proporciona un archivo
+    if (!sound.empty()) {
+        playSound(sound.c_str());
+    }
+
+    return false; // Por defecto
+}
+
+// Clase para manejar múltiples saltos de línea
+class Endls {
+public:
+    Endls(int count) : count(count) {}
+
+    // Sobrecarga del operador << para usar con cout
+    friend ostream& operator<<(ostream& os, const Endls& e) {
+        for (int i = 0; i < e.count; ++i) {
+            os << endl; // Imprime un salto de línea
+        }
+        return os; // Devuelve el flujo
+    }
+
+private:
+    int count;
+};
+
+// Función que crea un objeto Endls
+Endls endls(int count) {
+    return Endls(count);
 }
 
 #endif // JASG_H
