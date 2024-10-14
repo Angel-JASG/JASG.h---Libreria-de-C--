@@ -11,6 +11,11 @@
 #include <windows.h>
 #include <conio.h>
 #include <ostream>
+#include <thread>
+#include <chrono>
+
+
+
 
 using namespace std;
 
@@ -105,15 +110,46 @@ void beepTone(int frequency, int duration) {
     #endif
 }
 
-void playSound(const char* filename) {
-    #ifdef _WIN32
-    // Reproducir sonido simple en Windows
-    string command = "start /min cmd /c start " + string(filename);
-    system(command.c_str());
-    #else
-    cout << "Reproducción de sonido no disponible en este sistema operativo." << endl;
-    #endif
+#if __cplusplus < 201103L
+#error "Este código requiere soporte para C++11. Compila con -std=c++11 o -std=gnu++11. Asegúrate de que la biblioteca -lwinmm esté tambien."
+#endif
+
+void showError(const char* message) {
+    MessageBoxA(NULL, message, "Error", MB_OK | MB_ICONERROR);
 }
+
+void playSound(const char* filename) {
+    if (!PlaySound(filename, NULL, SND_FILENAME | SND_ASYNC)) {
+        showError("Error: No se pudo reproducir el sonido (asíncrono). Asegúrate de que la biblioteca winmm esté vinculada correctamente.");
+    }
+}
+
+void playSoundC(const char* filename) {
+    if (!PlaySound(filename, NULL, SND_FILENAME | SND_ASYNC)) {
+        showError("Error: No se pudo reproducir el sonido (asíncrono). Asegúrate de que la biblioteca winmm esté vinculada correctamente.");
+    }
+}
+
+void playSoundS(const char* filename) {
+    if (!PlaySound(filename, NULL, SND_FILENAME | SND_SYNC)) {
+        showError("Error: No se pudo reproducir el sonido (sincrónico). Asegúrate de que la biblioteca winmm esté vinculada correctamente.");
+    }
+}
+
+void StopSound() {
+    PlaySound(NULL, NULL, 0); // Detiene cualquier sonido en reproducción
+}
+
+void SoundInter(const char* effectSound, const char* backgroundMusic, int Time) {
+    StopSound(); // Detiene la música de fondo
+
+    // Reproduce el efecto de sonido
+    playSoundC(effectSound); // Usa la función de reproducción sincrónica
+	Sleep(Time);
+    // Vuelve a iniciar la música de fondo
+    playSound(backgroundMusic); 
+}
+
 
 // Función para detectar teclas especiales
 bool isSpecialKeyPressed(const string& key) {
@@ -151,7 +187,7 @@ void needs(const char keys[], const string& specificKey) {
     while (true) {
         for (int i = 0; keys[i] != '\0'; ++i) {
             if (isSpecialKeyPressed(string(1, keys[i]))) {
-                cout << "Tecla " << keys[i] << " presionada para " << specificKey << "." << endl;
+                
                 return; // Sale de la función al detectar una tecla
             }
         }
